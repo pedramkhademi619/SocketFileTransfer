@@ -13,27 +13,22 @@ server.listen()
 print('Server is listening')
 
 
-def handle_connection(conn, _addr):
-    # Critical Session
-    mutex = threading.Lock()
-    mutex.acquire()
-    print('Connected by', _addr)
-    sizeof_bytes = conn.recv(4)
+def get(_conn):
+    sizeof_bytes = _conn.recv(4)
     sizeof = struct.unpack('!I', sizeof_bytes)[0]
     print(sizeof)
     print(sizeof, "bytes received")
     try:
-        filename = conn.recv(24).decode('utf-8')[::-1]
+        filename = _conn.recv(24).decode('utf-8')[::-1]
         sleep(1)
-        conn.send("server>>File name received".encode('utf-8'))
+        _conn.send("server>>File name received".encode('utf-8'))
 
     except UnicodeDecodeError:
         filename = "Unknown!"
-        conn.send("server>>File name not received".encode('utf-8'))
 
     data = b""
     while len(data) < sizeof:
-        packet = conn.recv(sizeof - len(data))
+        packet = _conn.recv(sizeof - len(data))
         if not packet:
             break
         data += packet
@@ -46,17 +41,42 @@ def handle_connection(conn, _addr):
         _filename = 'b' + filename
         with open('1' + _filename, 'xb') as f:
             f.write(data)
-        statusOfFile = 'server>>File name exists. File 1b{} is saved in Server:{}.'.format(filename, os.path.abspath('b' + filename))
+        statusOfFile = 'server>>File name exists. File 1b{} is saved in Server:{}.'.format(filename, os.path.abspath(
+            'b' + filename))
     finally:
-        conn.send(statusOfFile.encode('utf-8'))
-        conn.close()
-        mutex.release()
+        _conn.send(statusOfFile.encode('utf-8'))
+
+
+def put(_conn):
+    filename = _conn.recv(1024).decode('utf-8')[::-1]
+    _conn.send("server>>File name received".encode('utf-8'))
+
+    with open(filename, 'rb') as f:
+        _bytes = f.read()
+        sizeof = len(_bytes)
+    _conn.send(struct.pack("!I", sizeof))
+    _conn.sendall(_bytes)
+
+
+def handle_connection(_conn, _addr, _task):
+    # Critical Session
+    mutex = threading.Lock()
+    mutex.acquire()
+    print('Connected by', _addr)
+    if task == 'put':
+        get(_conn)
+    elif task == 'get':
+        put(_conn)
+    _conn.close()
+    mutex.release()
 
 
 if __name__ == '__main__':
     while True:
         connection, address = server.accept()
-        thread = threading.Thread(target=handle_connection, args=(connection, address))
+        task = connection.recv(24).decode('utf-8')
+        print(task)
+        thread = threading.Thread(target=handle_connection, args=(connection, address, task))
         thread.start()
 
 # import socket

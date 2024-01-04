@@ -1,7 +1,8 @@
+import os.path
 import socket
 import struct
 from time import sleep
-
+import os
 HOST = '127.0.0.1'
 PORT = 6190
 addr = (HOST, PORT)
@@ -23,7 +24,7 @@ def put(_filename):
     print(statusOfFile)
 
 
-def get(_client, _path, _filename):
+def get(_client, _filename, _path=''):
     _client.send(_filename[::-1].encode('utf-8'))
     print(_client.recv(28).decode('utf-8'))
     sizeof = _client.recv(4)
@@ -40,21 +41,38 @@ def get(_client, _path, _filename):
             f.write(data)
     except FileExistsError:
         print("File already exists")
+    except FileNotFoundError:
+        os.mkdir(f'C:\\Users\\{os.getlogin()}\\Downloads')
+        with open(_path + '/' + _filename, 'xb') as f:
+            f.write(data)
 
 
-path = 'D:\\python\\socket\\first'
-
-
-def doTask(_task, _path, _filename):
+def doTask(_command):
     global client
+    try:
+        _task, _filename, _path = _command
+    except ValueError:
+        if _command[0] == 'put':
+            _task, _filename = _command
+            _path = ''
+        elif _command[0] == 'get':
+            _task, _filename = _command
+            _path = f'C:\\Users\\{os.getlogin()}\\Downloads'
+        else:
+            raise ValueError("Invalid command")
+
     client.sendall(_task.encode('utf-8'))
     if _task == 'put':
         put(filename)
     elif _task == 'get':
-        get(client, _path, _filename)
+        get(client, _filename, _path)
 
 
-task, filename, _path = input(">>").split()
-doTask(task, _path, filename)
+while True:
+    command = input('>>').split()
+    if command[0] == 'exit':
+        break
+    else:
+        doTask(command)
 
 client.close()

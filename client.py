@@ -12,18 +12,18 @@ print("Connected to server")
 
 
 def put(_filename):
-    with open(filename, 'rb') as f:
+    with open(_filename, 'rb') as f:
         _bytes = f.read()
         sizeof = len(_bytes)
     client.send(struct.pack("!I", sizeof))
-    client.send(filename[::-1].encode('utf-8'))
+    client.send(_filename[::-1].encode('utf-8'))
     client.sendall(_bytes)
 
     statusOfFile = client.recv(100).decode('utf-8')
     print(statusOfFile)
 
 
-def get(_client, _path, _filename):
+def get(_client, _filename, _path=''):
     _client.send(_filename[::-1].encode('utf-8'))
     print(_client.recv(28).decode('utf-8'))
     sizeof = _client.recv(4)
@@ -42,19 +42,21 @@ def get(_client, _path, _filename):
         print("File already exists")
 
 
-path = 'D:\\python\\socket\\first'
-
-
-def doTask(_task, _path, _filename):
+def doTask(_command):
     global client
+    _task, _filename, _path = _command
     client.sendall(_task.encode('utf-8'))
     if _task == 'put':
-        put(filename)
+        put(_filename)
     elif _task == 'get':
-        get(client, _path, _filename)
+        get(client, _filename, _path)
 
 
-task, filename, _path = input(">>").split()
-doTask(task, _path, filename)
+while True:
+    command = input('>>').split()
+    if command[0] == 'exit':
+        break
+    else:
+        doTask(command)
 
 client.close()

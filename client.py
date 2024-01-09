@@ -11,20 +11,28 @@ client.connect(addr)
 print("Connected to server")
 
 
+# Client PUT
 def put(_filename):
+    lenFileNameAsByte = len(_filename).to_bytes(4, 'little', signed=False)
+    client.send(lenFileNameAsByte)
+    print(f"Sent Over TCP: {lenFileNameAsByte}")
+    client.send(_filename.encode())
+    print(f"Sent Over TCP: {_filename}")
+    print("Recived from Server: " + client.recv(26).decode())
     with open(_filename, 'rb') as f:
         _bytes = f.read()
         sizeof = len(_bytes)
-    client.send(struct.pack("!I", sizeof))
-    client.send(_filename[::-1].encode('utf-8'))
+    print(f"ReadFile {_filename}: Size {sizeof}")
+    client.send(sizeof.to_bytes(16, 'little', signed=False))
+    print("Sent Over TCP: Size of file")
     client.sendall(_bytes)
-
+    print("Sent Over TCP: File Bytes")
     statusOfFile = client.recv(100).decode('utf-8')
     print(statusOfFile)
 
 
 def get(_client, _filename, _path=''):
-    _client.send(_filename[::-1].encode('utf-8'))
+    _client.send(_filename.encode('utf-8'))
     print(_client.recv(28).decode('utf-8'))
     sizeof = _client.recv(4)
     sizeof = struct.unpack("!I", sizeof)[0]
@@ -54,6 +62,7 @@ def doTask(_command):
 
 while True:
     command = input('>>').split()
+    print(command)
     if command[0] == 'exit':
         break
     else:

@@ -18,12 +18,12 @@ def put(_filename):
     print(f"Sent Over TCP: {lenFileNameAsByte}")
     client.send(_filename.encode())
     print(f"Sent Over TCP: {_filename}")
-    print("Recived from Server: " + client.recv(26).decode())
+    print(client.recv(26).decode())
     with open(_filename, 'rb') as f:
         _bytes = f.read()
-        sizeof = len(_bytes)
-    print(f"ReadFile {_filename}: Size {sizeof}")
-    client.send(sizeof.to_bytes(16, 'little', signed=False))
+        sizeOfFile = len(_bytes)
+    print(f"ReadFile {_filename}: Size {sizeOfFile}")
+    client.send(sizeOfFile.to_bytes(16, 'little', signed=False))
     print("Sent Over TCP: Size of file")
     client.sendall(_bytes)
     print("Sent Over TCP: File Bytes")
@@ -31,18 +31,17 @@ def put(_filename):
     print(statusOfFile)
 
 
-def get(_client, _filename, _path=''):
-    _client.send(_filename.encode('utf-8'))
-    print(_client.recv(28).decode('utf-8'))
-    sizeof = _client.recv(4)
-    sizeof = struct.unpack("!I", sizeof)[0]
-    print('sizeof ' + 'is ' + str(sizeof))
-    data = b""
-    while len(data) < sizeof:
-        packet = client.recv(sizeof - len(data))
-        if not packet:
-            break
-        data += packet
+def get(_filename, _path=''):
+    lenFileNameAsByte = (len(_filename)).to_bytes(4, 'little', signed=False)
+    client.send(lenFileNameAsByte)
+    print(f"Sent Over TCP: lenFileName: {len(_filename)}")
+    client.send(_filename.encode('utf-8'))
+    print(f'Sent Over TCP: FileName: {_filename}')
+    print(client.recv(26).decode('utf-8'))
+    sizeOfData = int.from_bytes(client.recv(4), 'little', signed=False)
+    print(f"Received Over TCP: size of data: {sizeOfData}")
+    data = client.recv(sizeOfData)
+    print(f"Received Over TCP: data")
     try:
         with open(_path + '/' + _filename, 'xb') as f:
             f.write(data)
@@ -50,22 +49,22 @@ def get(_client, _filename, _path=''):
         print("File already exists")
 
 
+# To Do: Implementation of checking file availability by file name.
+# If the file exists, input will be taken again.
+
 def doTask(_command):
-    global client
     _task, _filename, _path = _command
     client.sendall(_task.encode('utf-8'))
     if _task == 'put':
         put(_filename)
     elif _task == 'get':
-        get(client, _filename, _path)
+        get(_filename, _path)
 
 
 while True:
     command = input('>>').split()
-    print(command)
     if command[0] == 'exit':
         break
     else:
         doTask(command)
-
 client.close()
